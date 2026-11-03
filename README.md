@@ -4,6 +4,14 @@
 
 > 这是一个 DSH bundle 插件（Host + Client 两半），不是独立应用。
 
+## 预览
+
+![便签墙面板](docs/wall.png)
+
+![固定在桌面上的便签：始终置顶，最小化 DSH 也还在](docs/desktop.png)
+
+![与 DSH 窗口并列时的样子](docs/window.png)
+
 ## 功能
 
 - **左侧栏入口**：便签墙作为主面板，和「插件」「自动化任务」并列。
