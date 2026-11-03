@@ -1,0 +1,8 @@
+node_modules/
+*.log
+.smoke-home/
+.spawn-home/
+widget-pos.json
+widget.pid
+.DS_Store
+Thumbs.db

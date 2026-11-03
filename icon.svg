@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Sticky notes">
+  <rect x="5" y="5" width="54" height="54" rx="13" fill="#F2C94C"/>
+  <path d="M41 5h5a13 13 0 0 1 13 13v5H41z" fill="#D9A62E"/>
+  <g stroke="#6B4F0E" stroke-width="4" stroke-linecap="round" fill="none">
+    <path d="M18 25h20"/>
+    <path d="M18 35h28"/>
+    <path d="M18 45h13"/>
+  </g>
+</svg>
