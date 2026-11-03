@@ -34,6 +34,8 @@
 
 3. 重启 DSH，左侧栏出现便签图标。
 
+包名 `dsh-notes-wall`；bundle 补丁里注册的插件行 id 是 `dsh-notes`。
+
 > 桌面便签部分依赖 Windows 的 PowerShell + WinForms；面板本身跨平台，非 Windows 上固定便签会退化为「窗口内的浮动卡片」。
 
 ## 使用

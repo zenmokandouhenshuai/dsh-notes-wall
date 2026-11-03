@@ -10,7 +10,7 @@
  * in-memory store shared by the panel and the floating cards.
  */
 window.__ModuleLoader__.load({
-  id: '@local/dsh-notes',
+  id: 'dsh-notes-wall',
   factory(require) {
     const React = require('react')
     const h = React.createElement

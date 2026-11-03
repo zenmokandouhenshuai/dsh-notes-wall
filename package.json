@@ -1,9 +1,24 @@
 {
-  "name": "@local/dsh-notes",
+  "name": "dsh-notes-wall",
   "version": "1.0.0",
   "private": true,
   "type": "module",
   "description": "Sticky-notes wall panel with pin, star, one-click delete, six paper tints and always-on-top desktop notes.",
+  "author": "zenmokandouhenshuai",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zenmokandouhenshuai/dsh-notes-wall.git"
+  },
+  "homepage": "https://github.com/zenmokandouhenshuai/dsh-notes-wall#readme",
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "plugin",
+    "sticky-notes",
+    "notes",
+    "widget"
+  ],
   "exports": {
     ".": "./index.js",
     "./client": "./client.js",
