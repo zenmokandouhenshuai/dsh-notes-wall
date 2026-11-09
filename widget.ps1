@@ -368,7 +368,7 @@ function New-NoteForm($note, [int]$top) {
   $ink = [System.Drawing.ColorTranslator]::FromHtml($style.ink)
 
   $font = New-Object System.Drawing.Font('Microsoft YaHei UI', 10.5, [System.Drawing.FontStyle]::Regular)
-  $text = [string]$note.text
+  $text = [regex]::Replace([string]$note.text, '\*\*([^*]+)\*\*', '$1')
   $saved = (Read-Positions)[[string]$note.id]
 
   $width = 280
@@ -485,7 +485,7 @@ function Sync-Windows {
         $script:Forms[$id] = $entry
         $stackY = $entry.Form.Top + $entry.Form.Height + 12
       } elseif ($entry.Form -and -not $entry.Form.IsDisposed) {
-        $entry.Label.Text = [string]$note.text
+        $entry.Label.Text = [regex]::Replace([string]$note.text, '\*\*([^*]+)\*\*', '$1')
         $style = Style-Of $note
         if ($entry.Style.bg -ne $style.bg) {
           $entry.Style = $style

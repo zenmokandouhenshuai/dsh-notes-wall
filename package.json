@@ -1,9 +1,9 @@
 {
   "name": "dsh-notes-wall",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
-  "description": "Sticky-notes wall panel with pin, star, one-click delete, six paper tints and always-on-top desktop notes.",
+  "description": "Sticky-notes wall panel with pin, star, inline bold, in-place editing, six paper tints and always-on-top desktop notes.",
   "author": "zenmokandouhenshuai",
   "license": "MIT",
   "repository": {

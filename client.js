@@ -48,7 +48,10 @@ window.__ModuleLoader__.load({
 .dshn-sub{margin:0;font-size:12px;color:var(--dsw-alias-label-secondary);}
 .dshn-composer{display:flex;flex-direction:column;gap:8px;padding:12px 14px 10px;margin-bottom:16px;border-radius:14px;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);}
 .dshn-composer[data-colored='true']{border-color:transparent;}
-.dshn-input{min-height:54px;max-height:220px;box-sizing:border-box;padding:4px 2px;border:0;background:transparent;color:inherit;font:inherit;line-height:1.6;resize:vertical;outline:none;}
+.dshn-input{min-height:54px;max-height:60vh;box-sizing:border-box;padding:4px 2px;border:0;background:transparent;color:inherit;font:inherit;line-height:1.6;resize:none;outline:none;}
+.dshn-grip{height:9px;margin:0 -2px;border-radius:5px;cursor:ns-resize;display:flex;align-items:center;justify-content:center;touch-action:none;}
+.dshn-grip::after{content:'';width:46px;height:3px;border-radius:2px;background:var(--dsw-alias-border-l2);opacity:.7;transition:background .12s ease,opacity .12s ease;}
+.dshn-grip:hover::after{background:var(--dsw-alias-brand-primary);opacity:1;}
 .dshn-input::placeholder{color:var(--dsw-alias-label-secondary);opacity:.8;}
 .dshn-composer-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
 .dshn-dots{display:flex;align-items:center;gap:6px;}
@@ -95,6 +98,14 @@ window.__ModuleLoader__.load({
 .dshn-pin-close:hover{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary);}
 .dshn-pin-text{margin:0;font-size:13px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere;max-height:40vh;overflow:auto;}
 .dshn-pin-foot{font-size:10.5px;color:var(--dsw-alias-label-secondary);}
+.dshn-card-text strong,.dshn-pin-text strong{font-weight:700;}
+.dshn-card--editing{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px;}
+.dshn-edit-badge{display:flex;align-items:center;gap:10px;padding:2px 2px 0;font-size:11.5px;color:var(--dsw-alias-brand-primary);}
+.dshn-linkbtn{padding:0;border:0;background:none;color:inherit;font:inherit;text-decoration:underline;cursor:pointer;opacity:.85;}
+.dshn-linkbtn:hover{opacity:1;}
+.dshn-bold{width:26px;height:26px;padding:0;border-radius:6px;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-secondary);font:inherit;font-size:12.5px;font-weight:700;line-height:1;cursor:pointer;}
+.dshn-bold:hover{color:var(--dsw-alias-brand-primary);border-color:var(--dsw-alias-brand-primary);}
+.dshn-hint{font-size:11px;color:var(--dsw-alias-label-secondary);opacity:.85;}
 `
 
     /* Styles for the optional Document Picture-in-Picture window (a real
@@ -535,6 +546,62 @@ html,body{margin:0;padding:0;background:var(--dsw-alias-bg-overlay);color:var(--
         }))))
     }
 
+    /* 「**这样**」是唯一的加粗写法：文字本身还是纯文本，所以存档、搜索、
+       桌面挂件都读得懂，不依赖任何富文本格式。 */
+    function renderRich(text) {
+      const source = String(text == null ? '' : text)
+      return source.split(/(\*\*[^*]+\*\*)/g).map((part, index) => (
+        part.length > 4 && part.startsWith('**') && part.endsWith('**')
+          ? h('strong', { key: index }, part.slice(2, -2))
+          : part
+      ))
+    }
+
+    /** 加粗键：Ctrl/⌘+B 会被宿主的侧边栏快捷键抢走，所以 Alt+B 是主力。 */
+    function isBoldKey(event) {
+      if (String(event.key || '').toLowerCase() !== 'b') return false
+      return Boolean(event.ctrlKey || event.metaKey || event.altKey)
+    }
+
+    /** 拦下这次按键，尽量不让宿主的全局快捷键收到。 */
+    function swallowKey(event) {
+      event.preventDefault()
+      event.stopPropagation()
+      try {
+        if (event.nativeEvent && typeof event.nativeEvent.stopImmediatePropagation === 'function') {
+          event.nativeEvent.stopImmediatePropagation()
+        }
+      } catch (err) { /* 老浏览器没有这个方法 */ }
+    }
+
+    function restoreSelection(el, start, end) {
+      window.requestAnimationFrame(() => {
+        try {
+          el.focus()
+          el.setSelectionRange(start, end)
+        } catch (err) { /* 元素已经不在了 */ }
+      })
+    }
+
+    /** 给 textarea 里选中的一段加粗/取消加粗。没有选中就什么都不做。 */
+    function applyBold(el, value, onChange) {
+      if (!el) return false
+      const start = el.selectionStart
+      const end = el.selectionEnd
+      if (start == null || end == null || start === end) return false
+      const before = value.slice(0, start)
+      const inner = value.slice(start, end)
+      const after = value.slice(end)
+      if (before.endsWith('**') && after.startsWith('**')) {
+        onChange(before.slice(0, -2) + inner + after.slice(2))
+        restoreSelection(el, start - 2, end - 2)
+        return true
+      }
+      onChange(before + '**' + inner + '**' + after)
+      restoreSelection(el, start + 2, end + 2)
+      return true
+    }
+
     function NoteCard(props) {
       const note = props.note
       const swatch = swatchOf(note)
@@ -550,11 +617,18 @@ html,body{margin:0;padding:0;background:var(--dsw-alias-bg-overlay);color:var(--
       return h('article', {
         className: 'dshn-card' +
           (note.pinned && !swatch ? ' dshn-card--pinned' : '') +
-          (note.important && !swatch ? ' dshn-card--important' : ''),
+          (note.important && !swatch ? ' dshn-card--important' : '') +
+          (props.editing ? ' dshn-card--editing' : ''),
         'data-colored': swatch ? 'true' : 'false',
         style: surface,
       },
-      h('p', { className: 'dshn-card-text' }, note.text),
+      h('p', {
+        className: 'dshn-card-text',
+        title: '双击把这张便签的文字送进上面的输入框，改完点保存',
+        onDoubleClick: () => {
+          if (props.onEdit) props.onEdit(note)
+        },
+      }, renderRich(note.text)),
       h('div', { className: 'dshn-card-foot' },
         h('span', { className: 'dshn-time' }, relativeTime(note.createdAt)),
         note.important ? h('span', { className: 'dshn-tag' }, '重点') : null,
@@ -602,8 +676,40 @@ html,body{margin:0;padding:0;background:var(--dsw-alias-bg-overlay);color:var(--
     function NotesPanel() {
       const state = useStore()
       const [draft, setDraft] = useState('')
+      const inputRef = useRef(null)
+      const composerRef = useRef(null)
+      const [editingId, setEditingId] = useState(null)
       const [filter, setFilter] = useState('all')
       const [color, setColor] = useState(null)
+      const [composerHeight, setComposerHeight] = useState(() => {
+        try {
+          const saved = Number(window.localStorage.getItem('dshn-composer-height'))
+          if (Number.isFinite(saved) && saved >= 54) return saved
+        } catch (err) { /* 隐私模式下读不到 localStorage */ }
+        return 54
+      })
+      const heightRef = useRef(composerHeight)
+      heightRef.current = composerHeight
+
+      const startResize = (event) => {
+        if (event.button !== undefined && event.button !== 0) return
+        event.preventDefault()
+        const startY = event.clientY
+        const startH = heightRef.current
+        const limit = Math.round(window.innerHeight * 0.6)
+        const onMove = (moveEvent) => {
+          setComposerHeight(Math.max(54, Math.min(limit, startH + (moveEvent.clientY - startY))))
+        }
+        const onUp = () => {
+          window.removeEventListener('pointermove', onMove)
+          window.removeEventListener('pointerup', onUp)
+          try {
+            window.localStorage.setItem('dshn-composer-height', String(heightRef.current))
+          } catch (err) { /* ignore */ }
+        }
+        window.addEventListener('pointermove', onMove)
+        window.addEventListener('pointerup', onUp)
+      }
 
       useEffect(() => {
         void loadNotes()
@@ -628,16 +734,60 @@ html,body{margin:0;padding:0;background:var(--dsw-alias-bg-overlay);color:var(--
         }
         const value = draft.trim()
         if (!value) return
-        addNote(value, color)
+        if (editingId) {
+          // 正在改的就地写回那张便签；万一它已经被删了，就当成新便签存下来，
+          // 免得辛苦打的字凭空消失。
+          const exists = state.notes.some((note) => note.id === editingId)
+          if (exists) patchNote(editingId, { text: value, color: color || null })
+          else addNote(value, color)
+          setEditingId(null)
+          setColor(null)
+        } else {
+          addNote(value, color)
+        }
         setDraft('')
-      }, [draft, color])
+      }, [draft, color, editingId, state.notes])
+
+      const cancelEdit = useCallback(() => {
+        setEditingId(null)
+        setDraft('')
+        setColor(null)
+      }, [])
+
+      const beginEditNote = useCallback((note) => {
+        setEditingId(note.id)
+        setDraft(note.text)
+        setColor(note.color || null)
+        if (note.text.length > 40) setComposerHeight((current) => Math.max(current, 120))
+        window.requestAnimationFrame(() => {
+          if (composerRef.current) {
+            composerRef.current.scrollIntoView({ block: 'center', behavior: 'smooth' })
+          }
+          const el = inputRef.current
+          if (!el) return
+          el.focus()
+          try {
+            el.setSelectionRange(note.text.length, note.text.length)
+          } catch (err) { /* 老浏览器 */ }
+        })
+      }, [])
 
       const onKeyDown = useCallback((event) => {
+        if (event.key === 'Escape' && editingId) {
+          event.preventDefault()
+          cancelEdit()
+          return
+        }
+        if (isBoldKey(event)) {
+          swallowKey(event)
+          applyBold(event.currentTarget, draft, setDraft)
+          return
+        }
         if (event.key !== 'Enter') return
         if (event.shiftKey) return
         event.preventDefault()
         submit(event)
-      }, [submit])
+      }, [draft, submit, editingId, cancelEdit])
 
       const fixedCount = notes.filter((note) => note.desktop).length
       const status = state.saving
@@ -658,9 +808,10 @@ html,body{margin:0;padding:0;background:var(--dsw-alias-bg-overlay);color:var(--
               h('h1', { className: 'dshn-title' }, '便签墙'),
               h('span', { className: 'dshn-count' }, visible.length + ' / ' + notes.length)
             ),
-            h('p', { className: 'dshn-sub' }, '回车记一条，可先挑个底色；置顶排最前，重点标星；点屏幕图标固定到电脑桌面——始终压在其它窗口上面，最小化 DSH 也还在。')
+            h('p', { className: 'dshn-sub' }, '回车记一条，可先挑个底色；置顶排最前，重点标星；点屏幕图标固定到电脑桌面。双击便签可把文字送回输入框修改，选中文字按 Alt+B 加粗。')
           ),
           h('div', {
+            ref: composerRef,
             className: 'dshn-composer',
             'data-colored': color ? 'true' : 'false',
             style: color ? {
@@ -669,23 +820,51 @@ html,body{margin:0;padding:0;background:var(--dsw-alias-bg-overlay);color:var(--
               color: PALETTE_BY_KEY[color].ink,
             } : null,
           },
+          editingId ? h('div', { className: 'dshn-edit-badge' },
+            h('span', null, '正在修改这张便签 · 改完点「保存修改」'),
+            h('button', {
+              type: 'button',
+              className: 'dshn-linkbtn',
+              onClick: cancelEdit,
+            }, '取消（Esc）')
+          ) : null,
           h('textarea', {
+            ref: inputRef,
             className: 'dshn-input',
             value: draft,
-            placeholder: '写下你的下一个灵感…（Enter 保存，Shift+Enter 换行）',
+            placeholder: editingId
+              ? '修改完按 Enter 存回原便签，Shift+Enter 换行，Esc 取消'
+              : '写下你的下一个灵感…（Enter 保存，Shift+Enter 换行）',
             onChange: (event) => setDraft(event.target.value),
             onKeyDown,
             spellCheck: false,
+            style: { height: composerHeight + 'px' },
+          }),
+          h('div', {
+            className: 'dshn-grip',
+            title: '上下拖动可以调整输入框高度，双击复原',
+            onPointerDown: startResize,
+            onDoubleClick: () => {
+              setComposerHeight(54)
+              try { window.localStorage.removeItem('dshn-composer-height') } catch (err) { /* ignore */ }
+            },
           }),
           h('div', { className: 'dshn-composer-row' },
             h(PaletteDots, { value: color, onPick: setColor }),
+            h('button', {
+              type: 'button',
+              className: 'dshn-bold',
+              title: '选中一段文字后点这里加粗（Alt+B），再点一次取消',
+              onClick: () => applyBold(inputRef.current, draft, setDraft),
+            }, 'B'),
+            h('span', { className: 'dshn-hint' }, '选中文字可按 Alt+B 加粗'),
             h('button', {
               type: 'button',
               className: 'dshn-add',
               disabled: !draft.trim(),
               style: color ? { background: PALETTE_BY_KEY[color].ink, color: PALETTE_BY_KEY[color].bg } : null,
               onClick: () => submit(null),
-            }, '添加到墙上')
+            }, editingId ? '保存修改' : '添加到墙上')
           )),
           h('div', { className: 'dshn-toolbar' },
             FILTERS.map(([key, label]) => h('button', {
@@ -700,7 +879,12 @@ html,body{margin:0;padding:0;background:var(--dsw-alias-bg-overlay);color:var(--
           visible.length === 0
             ? h('div', { className: 'dshn-empty' }, notes.length === 0 ? '还没有便签，上面写第一条。' : '这个筛选下没有便签。')
             : h('div', { className: 'dshn-grid' },
-              visible.map((note) => h(NoteCard, { key: note.id, note })))
+              visible.map((note) => h(NoteCard, {
+                key: note.id,
+                note,
+                editing: note.id === editingId,
+                onEdit: beginEditNote,
+              })))
         )
       )
     }
@@ -793,7 +977,7 @@ html,body{margin:0;padding:0;background:var(--dsw-alias-bg-overlay);color:var(--
             onClick: () => patchNote(note.id, { desktop: false }),
           }, '×')
           ),
-          h('p', { className: 'dshn-pin-text' }, note.text),
+          h('p', { className: 'dshn-pin-text' }, renderRich(note.text)),
           h('div', { className: 'dshn-pin-foot' }, relativeTime(note.createdAt)))
         })
       )
